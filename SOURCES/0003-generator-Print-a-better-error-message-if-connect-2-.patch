@@ -1,0 +1,48 @@
+From f094472efcf34cea8bf1f02a1c5c9442ffc4ca53 Mon Sep 17 00:00:00 2001
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Date: Thu, 4 Feb 2021 18:02:46 +0000
+Subject: [PATCH] generator: Print a better error message if connect(2) returns
+ EAGAIN.
+
+The new error message is:
+
+nbd_connect_unix: connect: server backlog overflowed, see https://bugzilla.redhat.com/1925045: Resource temporarily unavailable
+
+Fixes: https://bugzilla.redhat.com/1925045
+Thanks: Xin Long, Lukas Doktor, Eric Blake
+Reviewed-by: Martin Kletzander <mkletzan@redhat.com>
+(cherry picked from commit 85ed74960a658a82d7b61b0be07f43d1b2dcede9)
+---
+ generator/states-connect.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/generator/states-connect.c b/generator/states-connect.c
+index 03b34c7..98c26e5 100644
+--- a/generator/states-connect.c
++++ b/generator/states-connect.c
+@@ -70,6 +70,22 @@ STATE_MACHINE {
+   if (r == 0 || (r == -1 && errno == EINPROGRESS))
+     return 0;
+   assert (r == -1);
++#ifdef __linux__
++  if (errno == EAGAIN && family == AF_UNIX) {
++    /* This can happen on Linux when connecting to a Unix domain
++     * socket, if the server's backlog is full.  Unfortunately there
++     * is nothing good we can do on the client side when this happens
++     * since any solution would involve sleeping or busy-waiting.  The
++     * only solution is on the server side, increasing the backlog.
++     * But at least improve the error message.
++     * https://bugzilla.redhat.com/1925045
++     */
++    SET_NEXT_STATE (%.DEAD);
++    set_error (errno, "connect: server backlog overflowed, "
++               "see https://bugzilla.redhat.com/1925045");
++    return 0;
++  }
++#endif
+   SET_NEXT_STATE (%.DEAD);
+   set_error (errno, "connect");
+   return 0;
+-- 
+2.31.1
+
