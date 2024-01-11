@@ -1,0 +1,30 @@
+From 486799e853aa9df034366303230a1785087a507a Mon Sep 17 00:00:00 2001
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Date: Fri, 8 Jan 2021 12:14:18 +0000
+Subject: [PATCH] copy/copy-nbd-to-sparse-file.sh: Skip test unless nbdkit
+ available.
+
+This test used nbdkit without checking it is available, which broke
+the test on RHEL 8 i686.
+
+Fixes: commit 28fe8d9d8d1ecb491070d20f22e2f34bb147f19f
+(cherry picked from commit 781cb44b63a87f2d5f40590ab8c446ad2e7b6702)
+---
+ copy/copy-nbd-to-sparse-file.sh | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/copy/copy-nbd-to-sparse-file.sh b/copy/copy-nbd-to-sparse-file.sh
+index aa2cb1b..47ff09a 100755
+--- a/copy/copy-nbd-to-sparse-file.sh
++++ b/copy/copy-nbd-to-sparse-file.sh
+@@ -24,6 +24,7 @@ set -x
+ requires cmp --version
+ requires dd --version
+ requires dd oflag=seek_bytes </dev/null
++requires nbdkit --version
+ requires test -r /dev/urandom
+ requires test -r /dev/zero
+ 
+-- 
+2.31.1
+

@@ -1,0 +1,163 @@
+From 22572f8ac13e2e8daf91d227eac2f384303fb5b4 Mon Sep 17 00:00:00 2001
+From: Eric Blake <eblake@redhat.com>
+Date: Thu, 3 Feb 2022 14:25:57 -0600
+Subject: [PATCH] copy: Pass in dummy variable rather than &errno to callback
+
+In several places where asynch handlers manually call the provided
+nbd_completion_callback, the value of errno is indeterminate (for
+example, in file-ops.c:file_asynch_read(), the previous call to
+file_synch_read() already triggered exit() on error, but does not
+guarantee what is left in errno on success).  As the callback should
+be paying attention to the value of *error (to be fixed in the next
+patch), we are better off ensuring that we pass in a pointer to a
+known-zero value.  Besides, passing in &errno carries a risk that if
+the callback uses any other library function that alters errno prior
+to dereferncing *error, it will no longer see the value we passed in.
+Thus, it is easier to use a dummy variable on the stack than to mess
+around with errno and it's magic macro expansion into a thread-local
+storage location.
+
+Note that several callsites then check if the callback returned -1,
+and if so assume that the callback has caused errno to now have a sane
+value to pass on to perror.  In theory, the fact that we are no longer
+passing in &errno means that if the callback assigns into *error but
+did not otherwise affect errno (a tenuous assumption, given our
+argument above that we could not even guarantee that the callback does
+not accidentally alter errno prior to reading *error), our perror call
+would no longer reflect the intended error value from the callback.
+But in practice, since the callback never actually returned -1, nor
+even assigned into *error, the call to perror is dead code; although I
+have chosen to defer that additional cleanup to the next patch.
+
+Message-Id: <20220203202558.203013-5-eblake@redhat.com>
+Acked-by: Richard W.M. Jones <rjones@redhat.com>
+Acked-by: Nir Soffer <nsoffer@redhat.com>
+Reviewed-by: Laszlo Ersek <lersek@redhat.com>
+(cherry picked from commit 794c8ce06e995ebd282e8f2b9465a06140572112)
+Conflicts:
+	copy/file-ops.c - no backport of d5f65e56 ("copy: Do not use trim
+ for zeroing"), so asynch_trim needed same treatment
+	copy/multi-thread-copying.c - context due to missing refactoring
+	copy/null-ops.c - no backport of 0b16205e "copy: Implement "null:"
+  destination."
+(cherry picked from commit 26e3dcf80815fe2db320d3046aabc2580c2f7a0d)
+---
+ copy/file-ops.c             | 22 +++++++++++++---------
+ copy/multi-thread-copying.c |  8 +++++---
+ 2 files changed, 18 insertions(+), 12 deletions(-)
+
+diff --git a/copy/file-ops.c b/copy/file-ops.c
+index 086348a..cc312b4 100644
+--- a/copy/file-ops.c
++++ b/copy/file-ops.c
+@@ -1,5 +1,5 @@
+ /* NBD client library in userspace.
+- * Copyright (C) 2020 Red Hat Inc.
++ * Copyright (C) 2020-2022 Red Hat Inc.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -158,10 +158,11 @@ file_asynch_read (struct rw *rw,
+                   struct command *command,
+                   nbd_completion_callback cb)
+ {
++  int dummy = 0;
++
+   file_synch_read (rw, slice_ptr (command->slice),
+                    command->slice.len, command->offset);
+-  errno = 0;
+-  if (cb.callback (cb.user_data, &errno) == -1) {
++  if (cb.callback (cb.user_data, &dummy) == -1) {
+     perror (rw->name);
+     exit (EXIT_FAILURE);
+   }
+@@ -172,10 +173,11 @@ file_asynch_write (struct rw *rw,
+                    struct command *command,
+                    nbd_completion_callback cb)
+ {
++  int dummy = 0;
++
+   file_synch_write (rw, slice_ptr (command->slice),
+                     command->slice.len, command->offset);
+-  errno = 0;
+-  if (cb.callback (cb.user_data, &errno) == -1) {
++  if (cb.callback (cb.user_data, &dummy) == -1) {
+     perror (rw->name);
+     exit (EXIT_FAILURE);
+   }
+@@ -185,10 +187,11 @@ static bool
+ file_asynch_trim (struct rw *rw, struct command *command,
+                   nbd_completion_callback cb)
+ {
++  int dummy = 0;
++
+   if (!file_synch_trim (rw, command->offset, command->slice.len))
+     return false;
+-  errno = 0;
+-  if (cb.callback (cb.user_data, &errno) == -1) {
++  if (cb.callback (cb.user_data, &dummy) == -1) {
+     perror (rw->name);
+     exit (EXIT_FAILURE);
+   }
+@@ -199,10 +202,11 @@ static bool
+ file_asynch_zero (struct rw *rw, struct command *command,
+                   nbd_completion_callback cb)
+ {
++  int dummy = 0;
++
+   if (!file_synch_zero (rw, command->offset, command->slice.len))
+     return false;
+-  errno = 0;
+-  if (cb.callback (cb.user_data, &errno) == -1) {
++  if (cb.callback (cb.user_data, &dummy) == -1) {
+     perror (rw->name);
+     exit (EXIT_FAILURE);
+   }
+diff --git a/copy/multi-thread-copying.c b/copy/multi-thread-copying.c
+index a7aaa7d..2593ff7 100644
+--- a/copy/multi-thread-copying.c
++++ b/copy/multi-thread-copying.c
+@@ -1,5 +1,5 @@
+ /* NBD client library in userspace.
+- * Copyright (C) 2020 Red Hat Inc.
++ * Copyright (C) 2020-2022 Red Hat Inc.
+  *
+  * This library is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU Lesser General Public
+@@ -391,6 +391,7 @@ finished_read (void *vp, int *error)
+     bool last_is_hole = false;
+     uint64_t i;
+     struct command *newcommand;
++    int dummy = 0;
+ 
+     /* Iterate over whole blocks in the command, starting on a block
+      * boundary.
+@@ -473,7 +474,7 @@ finished_read (void *vp, int *error)
+     /* Free the original command since it has been split into
+      * subcommands and the original is no longer needed.
+      */
+-    free_command (command, &errno);
++    free_command (command, &dummy);
+   }
+ 
+   return 1; /* auto-retires the command */
+@@ -498,6 +499,7 @@ static void
+ fill_dst_range_with_zeroes (struct command *command)
+ {
+   char *data;
++  int dummy = 0;
+ 
+   if (destination_is_zero)
+     goto free_and_return;
+@@ -541,7 +543,7 @@ fill_dst_range_with_zeroes (struct command *command)
+   free (data);
+ 
+  free_and_return:
+-  free_command (command, &errno);
++  free_command (command, &dummy);
+ }
+ 
+ static int
+-- 
+2.31.1
+
