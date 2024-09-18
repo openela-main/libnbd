@@ -9,7 +9,7 @@
 
 Name:           libnbd
 Version:        1.18.1
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        NBD client library in userspace
 
 License:        LGPL-2.0-or-later AND BSD-3-Clause
@@ -32,6 +32,15 @@ Source3:        copy-patches.sh
 Patch0001:     0001-generator-Fix-assertion-in-ext-mode-BLOCK_STATUS-CVE.patch
 Patch0002:     0002-docs-Fix-incorrect-xref-in-libnbd-release-notes-for-.patch
 Patch0003:     0003-tests-Check-behavior-of-nbd_set_strict_mode-STRICT_A.patch
+Patch0004:     0004-build-Move-to-minimum-gnutls-3.5.18.patch
+Patch0005:     0005-lib-crypto.c-Check-server-certificate-even-when-usin.patch
+Patch0006:     0006-lib-crypto.c-Allow-CA-verification-even-if-h-hostnam.patch
+Patch0007:     0007-interop-Pass-DCERTS-and-DPSK-as-strings.patch
+Patch0008:     0008-interop-Add-DEXPECT_FAIL-1-where-we-expect-the-test-.patch
+Patch0009:     0009-interop-Test-interop-with-a-bad-system-CA.patch
+Patch0010:     0010-lib-uri.c-Allow-tls-verify-peer-to-be-overridden-in-.patch
+Patch0011:     0011-docs-security-Add-link-to-TLS-server-certificate-che.patch
+Patch0012:     0012-docs-libnbd-security.pod-Assign-CVE-2024-7383.patch
 
 %if 0%{patches_touch_autotools}
 BuildRequires: autoconf, automake, libtool
@@ -383,6 +392,10 @@ make %{?_smp_mflags} check || {
 
 
 %changelog
+* Tue Aug 27 2024 Richard W.M. Jones <rjones@redhat.com> - 1.18.1-4
+- Fix CVE-2024-7383 NBD server improper certificate validation
+  resolves: RHEL-52730
+
 * Mon Nov 13 2023 Eric Blake <eblake@redhat.com> - 1.18.1-3
 - Backport unit test of recent libnbd API addition
   resolves: RHEL-16292
