@@ -1,0 +1,194 @@
+From ee3f88640062372d04406da321270a775377eb6c Mon Sep 17 00:00:00 2001
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Date: Fri, 3 Sep 2021 08:42:31 +0100
+Subject: [PATCH] lib: Allow tls-certificates=<DIR> query parameter in URIs
+
+For nbd_connect_uri, this allows a non-default path to a certificates
+directory to be specified.  For example:
+
+  nbds+unix://user@/?socket=/tmp/sock&tls-certificates=tests/pki
+
+nbd_get_uri is also extended to produce the tls-certificates query
+field if nbd_set_tls_certificates was called.
+
+The main work here is extending the test suite so it actually tests
+TLS URIs properly.  Firstly we need to add --tls-verify-peer to the
+nbdkit command line so it checks TLS client credentials at all
+(previously it enabled TLS but didn't verify the client).  Then we
+need to add tests which use TLS certificates (previously only PSK was
+being tested).  And finally I loosened the rules for comparing URIs
+since the order that query strings are returned by nbd_get_uri is not
+necessarily the same as the query strings in nbd_connect_uri.
+
+(cherry picked from commit 847e0b9830f6a9f07b4c242e1a500cd2b90cca5a)
+(cherry picked from commit 5e85582ec79460c95552f06c6d6c41d15dae092f)
+---
+ .gitignore        |  5 +++--
+ generator/API.ml  | 10 ++++++++++
+ lib/uri.c         | 14 ++++++++++++--
+ tests/Makefile.am | 47 +++++++++++++++++++++++++++++------------------
+ 4 files changed, 54 insertions(+), 22 deletions(-)
+
+diff --git a/.gitignore b/.gitignore
+index 4935b81b..c974e27b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -167,9 +167,10 @@ Makefile.in
+ /tests/connect-unix
+ /tests/connect-uri-nbd
+ /tests/connect-uri-nbd-unix
+-/tests/connect-uri-nbds
++/tests/connect-uri-nbds-certs
+ /tests/connect-uri-nbds-psk
+-/tests/connect-uri-nbds-unix
++/tests/connect-uri-nbds-unix-certs
++/tests/connect-uri-nbds-unix-psk
+ /tests/debug
+ /tests/debug-environment
+ /tests/errors
+diff --git a/generator/API.ml b/generator/API.ml
+index a46c6407..4b2a62e8 100644
+--- a/generator/API.ml
++++ b/generator/API.ml
+@@ -1231,6 +1231,11 @@ Connect over the Unix domain socket F</tmp/nbd.sock> to
+ an NBD server running locally.  The export name is set to C<foo>
+ (note without any leading C</> character).
+ 
++=item C<nbds+unix://alice@/?socket=/tmp/nbd.sock&tls-certificates=certs>
++
++Connect over a Unix domain socket, enabling TLS and setting the
++path to a directory containing certificates and keys.
++
+ =item C<nbd+vsock:///>
+ 
+ In this scenario libnbd is running in a virtual machine.  Connect
+@@ -1291,6 +1296,11 @@ Specifies the Unix domain socket to connect on.
+ Must be present for the C<+unix> transport and must not
+ be present for the other transports.
+ 
++=item B<tls-certificates=>F<DIR>
++
++Set the certificates directory.  See L<nbd_set_tls_certificates(3)>.
++Note this is not allowed by default - see next section.
++
+ =item B<tls-psk-file=>F<PSKFILE>
+ 
+ Set the PSK file.  See L<nbd_set_tls_psk_file(3)>.  Note
+diff --git a/lib/uri.c b/lib/uri.c
+index 9f5a2901..c8d9041e 100644
+--- a/lib/uri.c
++++ b/lib/uri.c
+@@ -249,9 +249,19 @@ nbd_unlocked_aio_connect_uri (struct nbd_handle *h, const char *raw_uri)
+   if (tls && nbd_unlocked_set_tls (h, LIBNBD_TLS_REQUIRE) == -1)
+     goto cleanup;
+ 
+-  /* Look for some tls-* parameters.  XXX More to come. */
++  /* Look for some tls-* parameters. */
+   for (i = 0; i < queries.size; i++) {
+-    if (strcmp (queries.ptr[i].name, "tls-psk-file") == 0) {
++    if (strcmp (queries.ptr[i].name, "tls-certificates") == 0) {
++      if (! h->uri_allow_local_file) {
++        set_error (EPERM,
++                   "local file access (tls-certificates) is not allowed, "
++                   "call nbd_set_uri_allow_local_file to enable this");
++        goto cleanup;
++      }
++      if (nbd_unlocked_set_tls_certificates (h, queries.ptr[i].value) == -1)
++        goto cleanup;
++    }
++    else if (strcmp (queries.ptr[i].name, "tls-psk-file") == 0) {
+       if (! h->uri_allow_local_file) {
+         set_error (EPERM,
+                    "local file access (tls-psk-file) is not allowed, "
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index ed5585a5..3c33b747 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -539,33 +539,32 @@ if HAVE_GNUTLS
+ if HAVE_CERTTOOL
+ 
+ check_PROGRAMS += \
+-	connect-uri-nbds \
+-	connect-uri-nbds-unix \
++	connect-uri-nbds-certs \
++	connect-uri-nbds-unix-certs \
+ 	$(NULL)
+ TESTS += \
+-	connect-uri-nbds \
+-	connect-uri-nbds-unix \
++	connect-uri-nbds-certs \
++	connect-uri-nbds-unix-certs \
+ 	$(NULL)
+ 
+ RANDOM2 := $(shell bash -c "echo $$(( 32768 + (RANDOM & 16383) ))")
+-connect_uri_nbds_SOURCES = connect-uri.c
+-connect_uri_nbds_CPPFLAGS = \
++connect_uri_nbds_certs_SOURCES = connect-uri.c
++connect_uri_nbds_certs_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+-	-DSERVER_PARAMS='"-p", "$(RANDOM2)", "--tls=require", "--tls-certificates=pki"' \
+-	-DPIDFILE='"connect-uri-nbds.pid"' \
+-	-DURI='"nbds://localhost:$(RANDOM2)/"' \
++	-DSERVER_PARAMS='"-p", "$(RANDOM2)", "--tls=require", "--tls-verify-peer", "--tls-certificates=pki"' \
++	-DPIDFILE='"connect-uri-nbds-certs.pid"' \
++	-DURI='"nbds://localhost:$(RANDOM2)/?tls-certificates=pki"' \
+ 	$(NULL)
+-connect_uri_nbds_LDADD = $(top_builddir)/lib/libnbd.la
++connect_uri_nbds_certs_LDADD = $(top_builddir)/lib/libnbd.la
+ 
+-connect_uri_nbds_unix_SOURCES = connect-uri.c
+-connect_uri_nbds_unix_CPPFLAGS = \
++connect_uri_nbds_unix_certs_SOURCES = connect-uri.c
++connect_uri_nbds_unix_certs_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+ 	-DNEEDS_UNIX_SOCKET=1 \
+-	-DSERVER_PARAMS='"-U", UNIX_SOCKET, "--tls=require", "--tls-certificates=pki"' \
+-	-DPIDFILE='"connect-uri-nbds-unix.pid"' \
+-	-DURI='"nbds+unix:///?socket="' # UNIX_SOCKET appended
+-connect_uri_nbds_unix_CFLAGS = $(WARNINGS_CFLAGS)
+-connect_uri_nbds_unix_LDADD = $(top_builddir)/lib/libnbd.la
++	-DSERVER_PARAMS='"-U", UNIX_SOCKET, "--tls=require", "--tls-verify-peer", "--tls-certificates=pki"' \
++	-DPIDFILE='"connect-uri-nbds-unix-certs.pid"' \
++	-DURI='"nbds+unix://alice@/?tls-certificates=pki&socket="' # UNIX_SOCKET appended
++connect_uri_nbds_unix_certs_LDADD = $(top_builddir)/lib/libnbd.la
+ 
+ endif HAVE_CERTTOOL
+ 
+@@ -573,21 +572,33 @@ if HAVE_PSKTOOL
+ 
+ check_PROGRAMS += \
+ 	connect-uri-nbds-psk \
++	connect-uri-nbds-unix-psk \
+ 	$(NULL)
+ TESTS += \
+ 	connect-uri-nbds-psk \
++	connect-uri-nbds-unix-psk \
+ 	$(NULL)
+ 
+ RANDOM3 := $(shell bash -c "echo $$(( 32768 + (RANDOM & 16383) ))")
+ connect_uri_nbds_psk_SOURCES = connect-uri.c
+ connect_uri_nbds_psk_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+-	-DSERVER_PARAMS='"-p", "$(RANDOM3)", "--tls=require", "--tls-psk=keys.psk"' \
++	-DSERVER_PARAMS='"-p", "$(RANDOM3)", "--tls=require", "--tls-verify-peer", "--tls-psk=keys.psk"' \
+ 	-DPIDFILE='"connect-uri-nbds-psk.pid"' \
+ 	-DURI='"nbds://alice@localhost:$(RANDOM3)/?tls-psk-file=keys.psk"' \
+ 	$(NULL)
+ connect_uri_nbds_psk_LDADD = $(top_builddir)/lib/libnbd.la
+ 
++connect_uri_nbds_unix_psk_SOURCES = connect-uri.c
++connect_uri_nbds_unix_psk_CPPFLAGS = \
++	$(AM_CPPFLAGS) \
++	-DNEEDS_UNIX_SOCKET=1 \
++	-DSERVER_PARAMS='"-U", UNIX_SOCKET, "--tls=require", "--tls-verify-peer", "--tls-psk=keys.psk"' \
++	-DPIDFILE='"connect-uri-nbds-unix-psk.pid"' \
++	-DURI='"nbds+unix://alice@/?tls-psk-file=keys.psk&socket="' # UNIX_SOCKET appended \
++	$(NULL)
++connect_uri_nbds_unix_psk_LDADD = $(top_builddir)/lib/libnbd.la
++
+ endif HAVE_PSKTOOL
+ 
+ endif HAVE_GNUTLS
+-- 
+2.43.0
+

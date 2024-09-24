@@ -1,0 +1,33 @@
+From 10ca0d72932092b09475893de233f17d3eff8a72 Mon Sep 17 00:00:00 2001
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Date: Thu, 4 Aug 2022 13:28:25 +0100
+Subject: [PATCH] tests/make-pki.sh: Use Subject Alternative Name for server
+ certificate
+
+This allows us to test this feature.
+
+(cherry picked from nbdkit commit 0c50bef16f9d6705add8db85c7ea7b4523770fba)
+
+(cherry picked from commit 38eabf6df05fae109212a4ce9afc9c0fe63c2f0e)
+(cherry picked from commit b07898e1ee70b0641ec5233d6e8f7fa16b63c287)
+---
+ tests/make-pki.sh | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/tests/make-pki.sh b/tests/make-pki.sh
+index d4f61204..03f4faa1 100755
+--- a/tests/make-pki.sh
++++ b/tests/make-pki.sh
+@@ -75,6 +75,9 @@ chmod 0600 $1/server-key.pem
+ cat > $1/server.info <<EOF
+ organization = Test
+ cn = localhost
++dns_name = localhost
++ip_address = 127.0.0.1
++ip_address = ::1
+ tls_www_server
+ encryption_key
+ signing_key
+-- 
+2.43.0
+

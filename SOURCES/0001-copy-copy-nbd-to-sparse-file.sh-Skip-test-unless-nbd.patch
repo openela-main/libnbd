@@ -14,7 +14,7 @@ Fixes: commit 28fe8d9d8d1ecb491070d20f22e2f34bb147f19f
  1 file changed, 1 insertion(+)
 
 diff --git a/copy/copy-nbd-to-sparse-file.sh b/copy/copy-nbd-to-sparse-file.sh
-index aa2cb1b..47ff09a 100755
+index aa2cb1b9..47ff09ae 100755
 --- a/copy/copy-nbd-to-sparse-file.sh
 +++ b/copy/copy-nbd-to-sparse-file.sh
 @@ -24,6 +24,7 @@ set -x
@@ -26,5 +26,5 @@ index aa2cb1b..47ff09a 100755
  requires test -r /dev/zero
  
 -- 
-2.31.1
+2.43.0
 

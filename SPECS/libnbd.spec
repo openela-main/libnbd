@@ -9,7 +9,7 @@
 
 Name:           libnbd
 Version:        1.6.0
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        NBD client library in userspace
 
 License:        LGPLv2+
@@ -26,7 +26,7 @@ Source2:       libguestfs.keyring
 Source3:        copy-patches.sh
 
 # Patches come from this upstream branch:
-# https://github.com/libguestfs/libnbd/tree/rhel-8.6
+# https://github.com/libguestfs/libnbd/tree/rhel-8.10
 
 # Patches.
 Patch0001:     0001-copy-copy-nbd-to-sparse-file.sh-Skip-test-unless-nbd.patch
@@ -36,6 +36,16 @@ Patch0004:     0004-opt_go-Tolerate-unplanned-server-death.patch
 Patch0005:     0005-security-Document-assignment-of-CVE-2021-20286.patch
 Patch0006:     0006-copy-Pass-in-dummy-variable-rather-than-errno-to-cal.patch
 Patch0007:     0007-copy-CVE-2022-0485-Fail-nbdcopy-if-NBD-read-or-write.patch
+Patch0008:     0008-build-Move-to-minimum-gnutls-3.5.18.patch
+Patch0009:     0009-tests-Factor-out-some-common-Makefile-flags.patch
+Patch0010:     0010-tests-connect-uri.c-Ensure-Unix-domain-socket-is-cle.patch
+Patch0011:     0011-lib-Allow-tls-certificates-DIR-query-parameter-in-UR.patch
+Patch0012:     0012-tests-make-pki.sh-Use-Subject-Alternative-Name-for-s.patch
+Patch0013:     0013-lib-crypto.c-Check-server-certificate-even-when-usin.patch
+Patch0014:     0014-lib-crypto.c-Allow-CA-verification-even-if-h-hostnam.patch
+Patch0015:     0015-lib-uri.c-Allow-tls-verify-peer-to-be-overridden-in-.patch
+Patch0016:     0016-docs-security-Add-link-to-TLS-server-certificate-che.patch
+Patch0017:     0017-docs-libnbd-security.pod-Assign-CVE-2024-7383.patch
 
 %if 0%{patches_touch_autotools}
 BuildRequires: autoconf, automake, libtool
@@ -312,6 +322,10 @@ make %{?_smp_mflags} check || {
 
 
 %changelog
+* Tue Aug 27 2024 Richard W.M. Jones <rjones@redhat.com> - 1.6.0-6.el8
+- Fix CVE-2024-7383 NBD server improper certificate validation
+  resolves: RHEL-52728
+
 * Mon Feb  7 2022 Richard W.M. Jones <rjones@redhat.com> - 1.6.0-5.el8
 - Fix CVE-2022-0485: Fail nbdcopy if NBD read or write fails
   resolves: rhbz#2045718

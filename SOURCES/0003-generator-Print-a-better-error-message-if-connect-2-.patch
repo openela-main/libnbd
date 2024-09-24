@@ -17,7 +17,7 @@ Reviewed-by: Martin Kletzander <mkletzan@redhat.com>
  1 file changed, 16 insertions(+)
 
 diff --git a/generator/states-connect.c b/generator/states-connect.c
-index 03b34c7..98c26e5 100644
+index 03b34c7d..98c26e54 100644
 --- a/generator/states-connect.c
 +++ b/generator/states-connect.c
 @@ -70,6 +70,22 @@ STATE_MACHINE {
@@ -44,5 +44,5 @@ index 03b34c7..98c26e5 100644
    set_error (errno, "connect");
    return 0;
 -- 
-2.31.1
+2.43.0
 

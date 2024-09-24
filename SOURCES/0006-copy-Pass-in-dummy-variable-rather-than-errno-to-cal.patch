@@ -47,7 +47,7 @@ Conflicts:
  2 files changed, 18 insertions(+), 12 deletions(-)
 
 diff --git a/copy/file-ops.c b/copy/file-ops.c
-index 086348a..cc312b4 100644
+index 086348a2..cc312b48 100644
 --- a/copy/file-ops.c
 +++ b/copy/file-ops.c
 @@ -1,5 +1,5 @@
@@ -114,7 +114,7 @@ index 086348a..cc312b4 100644
      exit (EXIT_FAILURE);
    }
 diff --git a/copy/multi-thread-copying.c b/copy/multi-thread-copying.c
-index a7aaa7d..2593ff7 100644
+index a7aaa7de..2593ff76 100644
 --- a/copy/multi-thread-copying.c
 +++ b/copy/multi-thread-copying.c
 @@ -1,5 +1,5 @@
@@ -159,5 +159,5 @@ index a7aaa7d..2593ff7 100644
  
  static int
 -- 
-2.31.1
+2.43.0
 

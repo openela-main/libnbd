@@ -1,0 +1,149 @@
+From da628792ddf7a3d3cb8f8b770c7dbb9b9d67444b Mon Sep 17 00:00:00 2001
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Date: Sat, 24 Apr 2021 21:40:58 +0100
+Subject: [PATCH] tests/connect-uri.c: Ensure Unix domain socket is cleaned up
+ on exit
+
+Commit 70f83fed13 ("tests: Create test sockets in /tmp instead of
+local directory.") aimed to create sockets with short path names in
+/tmp.  However it never cleaned them up.  Worse still, every time the
+Makefile was evaluated at all a temporary file was created.
+
+Fix this properly in the C file.
+
+Fixes: commit 70f83fed131c7e52b1a31a28d9acaf19f6c11d57
+(cherry picked from commit f5955c4c5bb0269e192b906a3ef98601aa63ad59)
+(cherry picked from commit 502f0b59ec1dbd64c6c64279316e03540258a54c)
+---
+ tests/Makefile.am   | 16 ++++++----------
+ tests/connect-uri.c | 45 +++++++++++++++++++++++++++++++++++++++------
+ 2 files changed, 45 insertions(+), 16 deletions(-)
+
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index 436e1c10..ed5585a5 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -525,15 +525,13 @@ connect_uri_nbd_CPPFLAGS = \
+ connect_uri_nbd_CFLAGS = $(AM_CFLAGS)
+ connect_uri_nbd_LDADD = $(top_builddir)/lib/libnbd.la
+ 
+-CONNECT_URI_NBD_UNIX_SOCKET := \
+-	$(shell mktemp /tmp/connect-uri-nbd-unix-socket-XXXXXX)
+ connect_uri_nbd_unix_SOURCES = connect-uri.c
+ connect_uri_nbd_unix_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+-	-DSERVER_PARAMS='"-U", SOCKET' \
+-	-DSOCKET='"$(CONNECT_URI_NBD_UNIX_SOCKET)"' \
++	-DNEEDS_UNIX_SOCKET=1 \
++	-DSERVER_PARAMS='"-U", UNIX_SOCKET' \
+ 	-DPIDFILE='"connect-uri-nbd-unix.pid"' \
+-	-DURI='"nbd+unix:///?socket=" SOCKET'
++	-DURI='"nbd+unix:///?socket="' # UNIX_SOCKET appended
+ connect_uri_nbd_unix_CFLAGS = $(WARNINGS_CFLAGS)
+ connect_uri_nbd_unix_LDADD = $(top_builddir)/lib/libnbd.la
+ 
+@@ -559,15 +557,13 @@ connect_uri_nbds_CPPFLAGS = \
+ 	$(NULL)
+ connect_uri_nbds_LDADD = $(top_builddir)/lib/libnbd.la
+ 
+-CONNECT_URI_NBDS_UNIX_SOCKET := \
+-	$(shell mktemp /tmp/connect-uri-nbds-unix-socket-XXXXXX)
+ connect_uri_nbds_unix_SOURCES = connect-uri.c
+ connect_uri_nbds_unix_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+-	-DSERVER_PARAMS='"-U", SOCKET, "--tls=require", "--tls-certificates=pki"' \
+-	-DSOCKET='"$(CONNECT_URI_NBDS_UNIX_SOCKET)"' \
++	-DNEEDS_UNIX_SOCKET=1 \
++	-DSERVER_PARAMS='"-U", UNIX_SOCKET, "--tls=require", "--tls-certificates=pki"' \
+ 	-DPIDFILE='"connect-uri-nbds-unix.pid"' \
+-	-DURI='"nbds+unix:///?socket=" SOCKET'
++	-DURI='"nbds+unix:///?socket="' # UNIX_SOCKET appended
+ connect_uri_nbds_unix_CFLAGS = $(WARNINGS_CFLAGS)
+ connect_uri_nbds_unix_LDADD = $(top_builddir)/lib/libnbd.la
+ 
+diff --git a/tests/connect-uri.c b/tests/connect-uri.c
+index 6e7d1685..ce9e4d9b 100644
+--- a/tests/connect-uri.c
++++ b/tests/connect-uri.c
+@@ -29,16 +29,49 @@
+ 
+ #include <libnbd.h>
+ 
++#ifdef NEEDS_UNIX_SOCKET
++#define UNIX_SOCKET tmp
++static char tmp[] = "/tmp/nbdXXXXXX";
++
++static void
++unlink_unix_socket (void)
++{
++  unlink (UNIX_SOCKET);
++}
++#endif /* NEEDS_UNIX_SOCKET */
++
+ int
+ main (int argc, char *argv[])
+ {
+   struct nbd_handle *nbd;
+   pid_t pid;
+   size_t i;
++#ifdef NEEDS_UNIX_SOCKET
++  char *uri;
++#else
++  const char *uri = URI;
++#endif
++
++#ifdef NEEDS_UNIX_SOCKET
++  int fd = mkstemp (UNIX_SOCKET);
++  if (fd == -1 ||
++      close (fd) == -1) {
++    perror (UNIX_SOCKET);
++    exit (EXIT_FAILURE);
++  }
++  /* We have to remove the temporary file first, since we will create
++   * a socket in its place, and ensure the socket is removed on exit.
++   */
++  unlink_unix_socket ();
++  atexit (unlink_unix_socket);
+ 
+-#ifdef SOCKET
+-  unlink (SOCKET);
++  /* uri = URI + UNIX_SOCKET */
++  if (asprintf (&uri, "%s%s", URI, UNIX_SOCKET) == -1) {
++    perror ("asprintf");
++    exit (EXIT_FAILURE);
++  }
+ #endif
++
+   unlink (PIDFILE);
+ 
+   pid = fork ();
+@@ -75,13 +108,13 @@ main (int argc, char *argv[])
+ 
+   nbd_set_uri_allow_local_file (nbd, true);
+ 
+-  if (nbd_connect_uri (nbd, URI) == -1) {
++  if (nbd_connect_uri (nbd, uri) == -1) {
+     fprintf (stderr, "%s\n", nbd_get_error ());
+     exit (EXIT_FAILURE);
+   }
+ 
+   /* Check we negotiated the right kind of connection. */
+-  if (strncmp (URI, "nbds", 4) == 0) {
++  if (strncmp (uri, "nbds", 4) == 0) {
+     if (! nbd_get_tls_negotiated (nbd)) {
+       fprintf (stderr, "%s: failed to negotiate a TLS connection\n",
+                argv[0]);
+@@ -95,8 +128,8 @@ main (int argc, char *argv[])
+   }
+ 
+   nbd_close (nbd);
+-#ifdef SOCKET
+-  unlink (SOCKET);
++#ifdef NEEDS_UNIX_SOCKET
++  free (uri);
+ #endif
+   exit (EXIT_SUCCESS);
+ }
+-- 
+2.43.0
+

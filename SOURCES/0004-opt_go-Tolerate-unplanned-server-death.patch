@@ -24,7 +24,7 @@ Fixes: bbf1c51392 (api: Give aio_opt_go a completion callback)
  1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/lib/opt.c b/lib/opt.c
-index 2317b72..e5802f4 100644
+index 2317b72a..e5802f4d 100644
 --- a/lib/opt.c
 +++ b/lib/opt.c
 @@ -1,5 +1,5 @@
@@ -55,5 +55,5 @@ index 2317b72..e5802f4 100644
      return -1;
    }
 -- 
-2.31.1
+2.43.0
 
