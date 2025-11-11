@@ -1,0 +1,268 @@
+From 625a79d4eea074d8f83dc590118605d88bd9676a Mon Sep 17 00:00:00 2001
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Date: Wed, 16 Jul 2025 12:27:21 +0100
+Subject: [PATCH] tools: Add extra version information in the output of
+ --version
+
+In tools like nbdcopy, add the extra version information, if present
+to the output of commands like 'nbdcopy --version'.
+
+For example in a downstream build you might see:
+
+  $ nbdcopy --version
+  nbdcopy 1.23.4 (libnbd-1.23.4-1.fc43)
+  libnbd 1.23.4 (libnbd-1.23.4-1.fc43)
+
+In upstream builds or builds not using the new ./configure --with-extra
+option, the output is unchanged.
+
+(cherry picked from commit 441eadf352e387aaba687bf424cc46424507bf18)
+---
+ common/utils/version.c | 13 +++++++++++--
+ copy/test-version.sh   | 31 ++++++++++++++++---------------
+ dump/test-version.sh   | 31 ++++++++++++++++---------------
+ fuse/test-version.sh   | 31 ++++++++++++++++---------------
+ info/test-version.sh   | 31 ++++++++++++++++---------------
+ sh/test-version.sh     | 31 ++++++++++++++++---------------
+ 6 files changed, 91 insertions(+), 77 deletions(-)
+
+diff --git a/common/utils/version.c b/common/utils/version.c
+index 554d3056..135c0c75 100644
+--- a/common/utils/version.c
++++ b/common/utils/version.c
+@@ -20,6 +20,7 @@
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <string.h>
+ 
+ #include "libnbd.h"
+ #include "version.h"
+@@ -30,9 +31,13 @@ display_version (const char *program_name)
+   struct nbd_handle *nbd;
+   const char *package_name = NULL;
+   const char *version = NULL;
++  const char *version_extra = NULL;
+ 
+   /* The program name and the version of the binary. */
+-  printf ("%s %s\n", program_name, PACKAGE_VERSION);
++  printf ("%s %s", program_name, PACKAGE_VERSION);
++  if (strcmp (LIBNBD_VERSION_EXTRA, "") != 0)
++    printf (" (%s)", LIBNBD_VERSION_EXTRA);
++  printf ("\n");
+ 
+   /* Flush to make sure it is printed, even if the code below crashes
+    * for any reason.
+@@ -46,9 +51,13 @@ display_version (const char *program_name)
+   if (nbd) {
+     package_name = nbd_get_package_name (nbd);
+     version = nbd_get_version (nbd);
++    version_extra = nbd_get_version_extra (nbd);
+   }
+   if (version) {
+-    printf ("%s %s\n", package_name ? package_name : PACKAGE_NAME, version);
++    printf ("%s %s", package_name ? package_name : PACKAGE_NAME, version);
++    if (strcmp (version_extra, "") != 0)
++      printf (" (%s)", version_extra);
++    printf ("\n");
+     fflush (stdout);
+   }
+   nbd_close (nbd);
+diff --git a/copy/test-version.sh b/copy/test-version.sh
+index f3bd30d4..0738f109 100755
+--- a/copy/test-version.sh
++++ b/copy/test-version.sh
+@@ -16,18 +16,19 @@
+ # License along with this library; if not, write to the Free Software
+ # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ 
+-# Test that nbdcopy --version looks sane.
+-
+-fail=0
+-output=$($VG nbdcopy --version)
+-if [ $? != 0 ]; then
+-    echo "$0: unexpected exit status"
+-    fail=1
+-fi
+-if [ "$output" != "nbdcopy $EXPECTED_VERSION
+-libnbd $EXPECTED_VERSION" ]; then
+-    echo "$0: unexpected output"
+-    fail=1
+-fi
+-echo "$output"
+-exit $fail
++# Test that --version looks sane.
++
++. ../tests/functions.sh
++set -e
++set -x
++
++tool=nbdcopy
++
++output=test-$tool.out
++cleanup_fn rm -f $output
++
++$VG $tool --version > $output
++cat $output
++
++grep "$tool $EXPECTED_VERSION" $output
++grep "libnbd $EXPECTED_VERSION" $output
+diff --git a/dump/test-version.sh b/dump/test-version.sh
+index 2ef32e05..8adc0e19 100755
+--- a/dump/test-version.sh
++++ b/dump/test-version.sh
+@@ -16,18 +16,19 @@
+ # License along with this library; if not, write to the Free Software
+ # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ 
+-# Test that nbddump --version looks sane.
+-
+-fail=0
+-output=$($VG nbddump --version)
+-if [ $? != 0 ]; then
+-    echo "$0: unexpected exit status"
+-    fail=1
+-fi
+-if [ "$output" != "nbddump $EXPECTED_VERSION
+-libnbd $EXPECTED_VERSION" ]; then
+-    echo "$0: unexpected output"
+-    fail=1
+-fi
+-echo "$output"
+-exit $fail
++# Test that --version looks sane.
++
++. ../tests/functions.sh
++set -e
++set -x
++
++tool=nbddump
++
++output=test-$tool.out
++cleanup_fn rm -f $output
++
++$VG $tool --version > $output
++cat $output
++
++grep "$tool $EXPECTED_VERSION" $output
++grep "libnbd $EXPECTED_VERSION" $output
+diff --git a/fuse/test-version.sh b/fuse/test-version.sh
+index 7b3e9929..18924b1f 100755
+--- a/fuse/test-version.sh
++++ b/fuse/test-version.sh
+@@ -16,18 +16,19 @@
+ # License along with this library; if not, write to the Free Software
+ # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ 
+-# Test that nbdfuse --version looks sane.
+-
+-fail=0
+-output=$($VG nbdfuse --version)
+-if [ $? != 0 ]; then
+-    echo "$0: unexpected exit status"
+-    fail=1
+-fi
+-if [ "$output" != "nbdfuse $EXPECTED_VERSION
+-libnbd $EXPECTED_VERSION" ]; then
+-    echo "$0: unexpected output"
+-    fail=1
+-fi
+-echo "$output"
+-exit $fail
++# Test that --version looks sane.
++
++. ../tests/functions.sh
++set -e
++set -x
++
++tool=nbdfuse
++
++output=test-$tool.out
++cleanup_fn rm -f $output
++
++$VG $tool --version > $output
++cat $output
++
++grep "$tool $EXPECTED_VERSION" $output
++grep "libnbd $EXPECTED_VERSION" $output
+diff --git a/info/test-version.sh b/info/test-version.sh
+index 0125479e..35b1eec7 100755
+--- a/info/test-version.sh
++++ b/info/test-version.sh
+@@ -16,18 +16,19 @@
+ # License along with this library; if not, write to the Free Software
+ # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ 
+-# Test that nbdinfo --version looks sane.
+-
+-fail=0
+-output=$($VG nbdinfo --version)
+-if [ $? != 0 ]; then
+-    echo "$0: unexpected exit status"
+-    fail=1
+-fi
+-if [ "$output" != "nbdinfo $EXPECTED_VERSION
+-libnbd $EXPECTED_VERSION" ]; then
+-    echo "$0: unexpected output"
+-    fail=1
+-fi
+-echo "$output"
+-exit $fail
++# Test that --version looks sane.
++
++. ../tests/functions.sh
++set -e
++set -x
++
++tool=nbdinfo
++
++output=test-$tool.out
++cleanup_fn rm -f $output
++
++$VG $tool --version > $output
++cat $output
++
++grep "$tool $EXPECTED_VERSION" $output
++grep "libnbd $EXPECTED_VERSION" $output
+diff --git a/sh/test-version.sh b/sh/test-version.sh
+index ef730ea2..5caba42c 100755
+--- a/sh/test-version.sh
++++ b/sh/test-version.sh
+@@ -16,18 +16,19 @@
+ # License along with this library; if not, write to the Free Software
+ # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ 
+-# Test that nbdsh --version looks sane.
+-
+-fail=0
+-output=$($VG nbdsh --version)
+-if [ $? != 0 ]; then
+-    echo "$0: unexpected exit status"
+-    fail=1
+-fi
+-if [ "$output" != "nbdsh $EXPECTED_VERSION
+-libnbd $EXPECTED_VERSION" ]; then
+-    echo "$0: unexpected output"
+-    fail=1
+-fi
+-echo "$output"
+-exit $fail
++# Test that --version looks sane.
++
++. ../tests/functions.sh
++set -e
++set -x
++
++tool=nbdsh
++
++output=test-$tool.out
++cleanup_fn rm -f $output
++
++$VG $tool --version > $output
++cat $output
++
++grep "$tool $EXPECTED_VERSION" $output
++grep "libnbd $EXPECTED_VERSION" $output
+-- 
+2.47.1
+

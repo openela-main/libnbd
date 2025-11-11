@@ -1,0 +1,318 @@
+From 3714f8912d9d1a56866df7309c4e9f0e6e60f809 Mon Sep 17 00:00:00 2001
+From: Eric Blake <eblake@redhat.com>
+Date: Thu, 24 Apr 2025 08:30:00 -0500
+Subject: [PATCH] maint: Spelling fixes
+
+As detected by:
+
+$ git ls-files | xargs codespell -L Tage
+
+Signed-off-by: Eric Blake <eblake@redhat.com>
+(cherry picked from commit 17513dabee51b2bbbe878b06aafc50e6e2ba28de)
+---
+ copy/file-ops.c                      |  2 +-
+ docs/libnbd-release-notes-1.18.pod   |  2 +-
+ docs/libnbd.pod                      |  4 ++--
+ examples/copy-libev.c                | 12 ++++++------
+ golang/aio_buffer.go                 |  2 +-
+ golang/callbacks.go                  |  2 +-
+ golang/examples/aio_copy/aio_copy.go |  4 ++--
+ golang/libnbd_020_aio_buffer_test.go |  2 +-
+ golang/libnbd_590_aio_copy_test.go   |  2 +-
+ golang/make-dist.sh                  |  2 +-
+ info/main.c                          |  8 ++++----
+ interop/interop.c                    |  2 +-
+ ocaml/examples/asynch_copy.ml        |  2 +-
+ ocaml/tests/test_590_aio_copy.ml     |  2 +-
+ rust/cargo_test/README.md            |  6 +++---
+ rust/tests/test_log/mod.rs           |  2 +-
+ tests/closure-lifetimes.c            |  2 +-
+ 17 files changed, 29 insertions(+), 29 deletions(-)
+
+diff --git a/copy/file-ops.c b/copy/file-ops.c
+index 491a4553..b3b04f5d 100644
+--- a/copy/file-ops.c
++++ b/copy/file-ops.c
+@@ -82,7 +82,7 @@ struct rw_file {
+   bool seek_hole_supported;
+   int sector_size;
+ 
+-  /* We try to use the most eficient zeroing first. If an efficent zero
++  /* We try to use the most efficient zeroing first. If an efficient zero
+    * method is not available, we disable the flag so next time we use
+    * the working method.
+    */
+diff --git a/docs/libnbd-release-notes-1.18.pod b/docs/libnbd-release-notes-1.18.pod
+index 836ebe19..dc284bf4 100644
+--- a/docs/libnbd-release-notes-1.18.pod
++++ b/docs/libnbd-release-notes-1.18.pod
+@@ -145,7 +145,7 @@ Consistently wrap source code at 80 columns (Laszlo Ersek).
+ 
+ Debug messages no longer print the very verbose state transitions
+ inside the state machine as these are not usually useful.  You can
+-reenable this by defining C<-DLIBNBD_STATE_VERBOSE=1> at compile time.
++re-enable this by defining C<-DLIBNBD_STATE_VERBOSE=1> at compile time.
+ 
+ Completion C<.callback> methods are now always called exactly once,
+ and documentation is clearer on when this happens (Eric Blake).
+diff --git a/docs/libnbd.pod b/docs/libnbd.pod
+index 796a6f03..a7039210 100644
+--- a/docs/libnbd.pod
++++ b/docs/libnbd.pod
+@@ -936,7 +936,7 @@ it would cause deadlock.
+ 
+ =head2 Completion callbacks
+ 
+-All of the asychronous commands have an optional completion callback
++All of the asynchronous commands have an optional completion callback
+ function that is used if the call to the asynchronous API reports
+ success.  The completion callback is invoked when the submitted
+ command is eventually marked complete, after any mid-command callbacks
+@@ -976,7 +976,7 @@ callback will still be valid (corresponding to the current portion of
+ the server's reply), and the overall command will still fail (at the
+ completion callback or L<nbd_aio_command_completed(3)> for an
+ asynchronous command, or as the result of the overall synchronous
+-command).  Returing C<-1> from a mid-command callback does not prevent
++command).  Returning C<-1> from a mid-command callback does not prevent
+ that callback from being reached again, if the server sends more
+ mid-command replies that warrant another use of that callback.  A
+ mid-command callback may be reached more times than expected if the
+diff --git a/examples/copy-libev.c b/examples/copy-libev.c
+index e8e3cda2..6c91c55d 100644
+--- a/examples/copy-libev.c
++++ b/examples/copy-libev.c
+@@ -3,7 +3,7 @@
+  *
+  * http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod
+  *
+- * To build it you need the libev-devel pacakge.
++ * To build it you need the libev-devel package.
+  *
+  * To run it:
+  *
+@@ -32,7 +32,7 @@
+ 
+ #include <ev.h>
+ 
+-/* These values depend on the enviroment tested.
++/* These values depend on the environment tested.
+  *
+  * For shared storage using direct I/O:
+  *
+@@ -76,8 +76,8 @@ enum request_state {
+     IDLE,       /* Not used yet. */
+     EXTENTS,    /* Getting extents from source. */
+     READ,       /* Read from source. */
+-    WRITE,      /* Write to destiation. */
+-    ZERO,       /* Write zeroes to destiation. */
++    WRITE,      /* Write to destination. */
++    ZERO,       /* Write zeroes to destination. */
+     SLEEP       /* Waiting for extents completion. */
+ };
+ 
+@@ -631,12 +631,12 @@ main (int argc, char *argv[])
+ 
+     debug = getenv ("COPY_LIBEV_DEBUG") != NULL;
+ 
+-    /* Configure soruce to report extents. */
++    /* Configure source to report extents. */
+ 
+     if (nbd_add_meta_context (src.nbd, LIBNBD_CONTEXT_BASE_ALLOCATION))
+         FAIL ("Cannot add base:allocation: %s", nbd_get_error ());
+ 
+-    /* Connecting is fast, so use the syncronous API. */
++    /* Connecting is fast, so use the synchronous API. */
+ 
+     if (nbd_connect_uri (src.nbd, argv[1]))
+         FAIL ("Cannot connect to source: %s", nbd_get_error ());
+diff --git a/golang/aio_buffer.go b/golang/aio_buffer.go
+index 3ddfce94..ff00e0a4 100644
+--- a/golang/aio_buffer.go
++++ b/golang/aio_buffer.go
+@@ -80,7 +80,7 @@ func (b *AioBuffer) Bytes() []byte {
+ 
+ // Slice creates a slice backed by the underlying C array. The slice can be
+ // used to access or modify the contents of the underlying array. The slice
+-// must not be used after caling Free().
++// must not be used after calling Free().
+ func (b *AioBuffer) Slice() []byte {
+ 	if b.P == nil {
+ 		panic("Using AioBuffer after Free()")
+diff --git a/golang/callbacks.go b/golang/callbacks.go
+index ac53572c..f9b4958a 100644
+--- a/golang/callbacks.go
++++ b/golang/callbacks.go
+@@ -36,7 +36,7 @@
+ // - Create an exported Golang function whose job will be to retrieve
+ //   the context and execute the callback in it
+ //   (connErrCallback). Such a function should receive a callback ID
+-//   and will use it to retrive the context.
++//   and will use it to retrieve the context.
+ //
+ // - Create a CGO function similar to the above function but with the
+ //   appropriate signature to be registered as a callback in C code
+diff --git a/golang/examples/aio_copy/aio_copy.go b/golang/examples/aio_copy/aio_copy.go
+index 1de115b1..62756a97 100644
+--- a/golang/examples/aio_copy/aio_copy.go
++++ b/golang/examples/aio_copy/aio_copy.go
+@@ -62,8 +62,8 @@
+ )
+ 
+ // command keeps state of single AioPread call while the read is handled by
+-// libnbd, until the command reach the front of the queue and can be writen to
+-// the output.
++// libnbd, until the command reach the front of the queue and can be written
++// to the output.
+ type command struct {
+ 	buf   libnbd.AioBuffer
+ 	ready bool
+diff --git a/golang/libnbd_020_aio_buffer_test.go b/golang/libnbd_020_aio_buffer_test.go
+index 5e63e27c..8addc350 100644
+--- a/golang/libnbd_020_aio_buffer_test.go
++++ b/golang/libnbd_020_aio_buffer_test.go
+@@ -75,7 +75,7 @@ func TestAioBuffer(t *testing.T) {
+ 		t.Fatalf("Expected %v, got %v", zeroes, buf2.Bytes())
+ 	}
+ 
+-	/* Crated a zeroed buffer. */
++	/* Create a zeroed buffer. */
+ 	buf3 := MakeAioBufferZero(uint(32))
+ 	defer buf.Free()
+ 
+diff --git a/golang/libnbd_590_aio_copy_test.go b/golang/libnbd_590_aio_copy_test.go
+index 6ae0cc63..410c8f45 100644
+--- a/golang/libnbd_590_aio_copy_test.go
++++ b/golang/libnbd_590_aio_copy_test.go
+@@ -86,7 +86,7 @@ func write_completed(buf AioBuffer) int {
+ 	return 1
+ }
+ 
+-/* Copy between two libnbd handles using aynchronous I/O (AIO). */
++/* Copy between two libnbd handles using asynchronous I/O (AIO). */
+ func asynch_copy(t *testing.T, src *Libnbd, dst *Libnbd) {
+ 	size, _ := dst.GetSize()
+ 
+diff --git a/golang/make-dist.sh b/golang/make-dist.sh
+index e6c126c3..03cfc6a2 100755
+--- a/golang/make-dist.sh
++++ b/golang/make-dist.sh
+@@ -112,7 +112,7 @@ echo "$info" > $v_dir/$version.info
+ cp go.mod $v_dir/$version.mod
+ mv $version.zip $v_dir
+ 
+-# Create the list file by amending the curent file on the server.
++# Create the list file by amending the current file on the server.
+ list_url=https://download.libguestfs.org/libnbd/golang/libguestfs.org/libnbd/@v/list
+ curl --silent --show-error "$list_url" | sort > $v_dir/list
+ grep -q "$version" $v_dir/list || echo "$version" >> $v_dir/list
+diff --git a/info/main.c b/info/main.c
+index 1ee9e329..f7da425f 100644
+--- a/info/main.c
++++ b/info/main.c
+@@ -130,7 +130,7 @@ main (int argc, char *argv[])
+     { "can",                required_argument, NULL, CAN_OPTION },
+     { "cannot",             required_argument, NULL, CANNOT_OPTION },
+     { "can-not",            required_argument, NULL, CANNOT_OPTION },
+-    { "cant",               required_argument, NULL, CANNOT_OPTION },
++    { "can""t",             required_argument, NULL, CANNOT_OPTION },
+     { "color",              no_argument,       NULL, COLOUR_OPTION },
+     { "colors",             no_argument,       NULL, COLOUR_OPTION },
+     { "colour",             no_argument,       NULL, COLOUR_OPTION },
+@@ -144,15 +144,15 @@ main (int argc, char *argv[])
+     { "has",                required_argument, NULL, CAN_OPTION },
+     { "hasnot",             required_argument, NULL, CANNOT_OPTION },
+     { "has-not",            required_argument, NULL, CANNOT_OPTION },
+-    { "hasnt",              required_argument, NULL, CANNOT_OPTION },
++    { "hasn""t",            required_argument, NULL, CANNOT_OPTION },
+     { "have",               required_argument, NULL, CAN_OPTION },
+-    { "havent",             required_argument, NULL, CANNOT_OPTION },
++    { "haven""t",           required_argument, NULL, CANNOT_OPTION },
+     { "havenot",            required_argument, NULL, CANNOT_OPTION },
+     { "have-not",           required_argument, NULL, CANNOT_OPTION },
+     { "is",                 required_argument, NULL, CAN_OPTION },
+     { "isnot",              required_argument, NULL, CANNOT_OPTION },
+     { "is-not",             required_argument, NULL, CANNOT_OPTION },
+-    { "isnt",               required_argument, NULL, CANNOT_OPTION },
++    { "isn""t",             required_argument, NULL, CANNOT_OPTION },
+     { "json",               no_argument,       NULL, JSON_OPTION },
+     { "list",               no_argument,       NULL, 'L' },
+     { "long-options",       no_argument,       NULL, LONG_OPTIONS },
+diff --git a/interop/interop.c b/interop/interop.c
+index 1ea0216e..841b7c9d 100644
+--- a/interop/interop.c
++++ b/interop/interop.c
+@@ -131,7 +131,7 @@ main (int argc, char *argv[])
+    * need to have our own log handler.
+    *
+    * Also the log levels are quite random.  Level 2 doesn't show the
+-   * negotiated cyphersuite, but level 3+ shows excessive detail.
++   * negotiated ciphersuite, but level 3+ shows excessive detail.
+    */
+   gnutls_global_set_log_level (2);
+   gnutls_global_set_log_function (tls_log);
+diff --git a/ocaml/examples/asynch_copy.ml b/ocaml/examples/asynch_copy.ml
+index 7132f573..8962a09e 100644
+--- a/ocaml/examples/asynch_copy.ml
++++ b/ocaml/examples/asynch_copy.ml
+@@ -10,7 +10,7 @@ let max_reads_in_flight = 16
+ let dir_is_read dir = dir land (Int32.to_int NBD.aio_direction_read) <> 0
+ let dir_is_write dir = dir land (Int32.to_int NBD.aio_direction_write) <> 0
+ 
+-(* Copy between two libnbd handles using aynchronous I/O (AIO). *)
++(* Copy between two libnbd handles using asynchronous I/O (AIO). *)
+ let asynch_copy src dst =
+   let size = NBD.get_size dst in
+ 
+diff --git a/ocaml/tests/test_590_aio_copy.ml b/ocaml/tests/test_590_aio_copy.ml
+index 25105e07..b5fb5cd6 100644
+--- a/ocaml/tests/test_590_aio_copy.ml
++++ b/ocaml/tests/test_590_aio_copy.ml
+@@ -34,7 +34,7 @@ let bytes_written = ref 0
+ let dir_is_read dir = dir land (Int32.to_int NBD.aio_direction_read) <> 0
+ let dir_is_write dir = dir land (Int32.to_int NBD.aio_direction_write) <> 0
+ 
+-(* Copy between two libnbd handles using aynchronous I/O (AIO). *)
++(* Copy between two libnbd handles using asynchronous I/O (AIO). *)
+ let asynch_copy src dst =
+   let size = NBD.get_size dst in
+ 
+diff --git a/rust/cargo_test/README.md b/rust/cargo_test/README.md
+index f80646b9..039cdb3e 100644
+--- a/rust/cargo_test/README.md
++++ b/rust/cargo_test/README.md
+@@ -1,3 +1,3 @@
+-The solely purpose of this directory is to serve as a test crate for checking if Cargo is useable.
+-`cargo test`, `cargo doc` and `cargo fmt` are run in the Autoconf script in this directory. If any of the commands failes,
+-Cargo is assumed not to be useable and the Rust bindings will be disabled.
++The sole purpose of this directory is to serve as a test crate for checking if Cargo is usable.
++`cargo test`, `cargo doc` and `cargo fmt` are run in the Autoconf script in this directory. If any of the commands fails,
++Cargo is assumed not to be usable and the Rust bindings will be disabled.
+diff --git a/rust/tests/test_log/mod.rs b/rust/tests/test_log/mod.rs
+index 8dbcd79f..d3fe98eb 100644
+--- a/rust/tests/test_log/mod.rs
++++ b/rust/tests/test_log/mod.rs
+@@ -49,7 +49,7 @@ impl DebugLogger {
+         }
+     }
+ 
+-    /// Check wether a specific message has been logged.
++    /// Check whether a specific message has been logged.
+     pub fn contains(&self, msg: &str) -> bool {
+         self.entries.lock().unwrap().iter().any(|(_, x)| x == msg)
+     }
+diff --git a/tests/closure-lifetimes.c b/tests/closure-lifetimes.c
+index b9d9ce14..d6625095 100644
+--- a/tests/closure-lifetimes.c
++++ b/tests/closure-lifetimes.c
+@@ -156,7 +156,7 @@ main (int argc, char *argv[])
+                                      completion_callback, 0);
+   if (cookie == -1) NBD_ERROR;
+   /* read_cb_called is indeterminate at this point, as state machine
+-   * progress may vary based on task schduling and network speed factors.
++   * progress may vary based on task scheduling and network speed factors.
+    */
+   assert (completion_cb_called == 0);
+   assert (read_cb_freed == 0);
+-- 
+2.47.1
+

@@ -1,0 +1,114 @@
+From 5fef22179c1ce7e032a773733073349d90aab155 Mon Sep 17 00:00:00 2001
+From: Eric Blake <eblake@redhat.com>
+Date: Sat, 31 May 2025 08:24:37 -0500
+Subject: [PATCH] info: Tolerate nbdkit slop on large extents
+
+The NBD spec currently requires servers to send aligned block extents
+back if the client and server agreed to a minimum block size; but
+nbdkit 1.42 has an issue where the server recognizes that a plugin
+reporting an aligned extent of exactly 4G is too large for a 32-bit
+block status response, and truncates it early but to an unaligned
+offset (such a truncation is to an offset larger than the client's
+request size).  Although I'm also submitting a parallel patch to the
+NBD spec to relax things on this front, and to nbdkit 1.44 to report
+aligned offsets in the first place, it is still worth teaching nbdinfo
+to work around this shortcoming of existing nbdkit releases.  The
+added test fails when applied in isolation without the corresponding
+map.c changes and run against nbdkit 1.42.
+
+Signed-off-by: Eric Blake <eblake@redhat.com>
+(cherry picked from commit 7dc75f2542a003c7429f1af93b7ecbaef00b567c)
+---
+ info/Makefile.am              |  1 +
+ info/info-map-large-extent.sh | 42 +++++++++++++++++++++++++++++++++++
+ info/map.c                    | 12 +++++++++-
+ 3 files changed, 54 insertions(+), 1 deletion(-)
+ create mode 100755 info/info-map-large-extent.sh
+
+diff --git a/info/Makefile.am b/info/Makefile.am
+index 21cf3f46..697bb2b6 100644
+--- a/info/Makefile.am
++++ b/info/Makefile.am
+@@ -49,6 +49,7 @@ info_sh_files = \
+ 	info-map-base-allocation-large.sh \
+ 	info-map-base-allocation-weird.sh \
+ 	info-map-base-allocation-zero.sh \
++	info-map-large-extent.sh \
+ 	info-map-qemu-dirty-bitmap.sh \
+ 	info-map-qemu-allocation-depth.sh \
+ 	info-map-totals.sh \
+diff --git a/info/info-map-large-extent.sh b/info/info-map-large-extent.sh
+new file mode 100755
+index 00000000..91867275
+--- /dev/null
++++ b/info/info-map-large-extent.sh
+@@ -0,0 +1,42 @@
++#!/usr/bin/env bash
++# nbd client library in userspace
++# Copyright Red Hat
++#
++# This library is free software; you can redistribute it and/or
++# modify it under the terms of the GNU Lesser General Public
++# License as published by the Free Software Foundation; either
++# version 2 of the License, or (at your option) any later version.
++#
++# This library is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++# Lesser General Public License for more details.
++#
++# You should have received a copy of the GNU Lesser General Public
++# License along with this library; if not, write to the Free Software
++# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++
++. ../tests/functions.sh
++
++set -e
++set -x
++
++requires $NBDKIT --version
++requires $NBDKIT -U - --filter=blocksize-policy data 1 --run 'test "$uri" != ""'
++
++out=info-map-large-extent.out
++cleanup_fn rm -f $out
++rm -f $out
++
++# nbdkit < 1.44 had a bug where 4G large extents would truncate larger than
++# the aligned request; whether or not nbdkit is fixed, we can work around it.
++$NBDKIT -U - data data='@4294967296 1 @^512' \
++        --filter=blocksize-policy blocksize-minimum=512 \
++        --run '$VG nbdinfo --map "$uri"' > $out
++
++cat $out
++
++diff -u - $out <<EOF
++         0  4294967296    3  hole,zero
++4294967296         512    0  data
++EOF
+diff --git a/info/map.c b/info/map.c
+index 38b60c39..dfc8e911 100644
+--- a/info/map.c
++++ b/info/map.c
+@@ -95,8 +95,18 @@ do_map (void)
+                progname);
+       exit (EXIT_FAILURE);
+     }
+-    for (i = prev_entries_size; i < entries.len; i++)
++    for (i = prev_entries_size; i < entries.len; i++) {
++      /* nbdkit < 1.44 has a bug where even though we requested an
++       * aligned request at 4G-alignment, the result can be unaligned
++       * if it is larger than the request.  The easiest workaround is
++       * to ignore the slop.
++       */
++      if (entries.ptr[i].length > max_len) {
++        entries.ptr[i].length = max_len;
++        entries.len = i + 1;
++      }
+       offset += entries.ptr[i].length;
++    }
+   }
+ 
+   if (!totals)
+-- 
+2.47.1
+

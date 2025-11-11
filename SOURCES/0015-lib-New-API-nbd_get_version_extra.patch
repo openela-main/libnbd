@@ -1,0 +1,107 @@
+From e17980b7bc91eb74d2cccfcc4dc89e4dcead5609 Mon Sep 17 00:00:00 2001
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Date: Wed, 16 Jul 2025 12:26:29 +0100
+Subject: [PATCH] lib: New API: nbd_get_version_extra
+
+This new API gets the ./configure --with-extra="..." string, usually
+the empty string (for upstream builds) or the package NVR (for
+downstream builds).
+
+This commit also adds a test.
+
+(cherry picked from commit 0b7e0831912c9efcd601b4738756a0aeb948df79)
+---
+ generator/API.ml    | 26 ++++++++++++++++++++++++--
+ lib/handle.c        |  6 ++++++
+ tests/get-version.c |  7 +++++++
+ 3 files changed, 37 insertions(+), 2 deletions(-)
+
+diff --git a/generator/API.ml b/generator/API.ml
+index 8ee1843a..b1932dfa 100644
+--- a/generator/API.ml
++++ b/generator/API.ml
+@@ -4172,7 +4172,7 @@ versions.";
+     longdesc = "\
+ Returns the name of the library, always C<\"libnbd\"> unless
+ the library was modified with another name at compile time.";
+-    see_also = [Link "get_version"];
++    see_also = [Link "get_version"; Link "get_version_extra"];
+   };
+ 
+   "get_version", {
+@@ -4220,7 +4220,26 @@ The release number is incremented for each release along a particular
+ branch.
+ 
+ =back";
+-    see_also = [Link "get_package_name"];
++    see_also = [Link "get_package_name"; Link "get_version_extra"];
++  };
++
++  "get_version_extra", {
++    default_call with
++    args = []; ret = RStaticString; is_locked = false; may_set_error = false;
++    shortdesc = "return the extra version of the library";
++    longdesc = "\
++Return the extra version of libnbd.  This is a freeform string
++which is set at package build time using:
++
++ ./configure --with-extra=\"...\"
++
++and it intended to be used by downstream packagers (eg. Linux distributions)
++to convey extra version information, such as the precise version of
++the libnbd RPM, C<.deb> etc.
++
++The string may be C<\"\">, indicating that no extra version information
++is available, or that this is an upstream build of libnbd.";
++    see_also = [Link "get_package_name"; Link "get_version_extra"];
+   };
+ 
+   "kill_subprocess", {
+@@ -4515,6 +4534,9 @@ let first_version = [
+   "is_uri", (1, 22);
+   "get_subprocess_pid", (1, 22);
+ 
++  (* Added in 1.23.x development cycle, will be stable and supported in 1.24 *)
++  "get_version_extra", (1, 24);
++
+   (* These calls are proposed for a future version of libnbd, but
+    * have not been added to any released version so far.
+   "get_tls_certificates", (1, ??);
+diff --git a/lib/handle.c b/lib/handle.c
+index a263cc4c..ec64d601 100644
+--- a/lib/handle.c
++++ b/lib/handle.c
+@@ -566,6 +566,12 @@ nbd_unlocked_get_version (struct nbd_handle *h)
+   return PACKAGE_VERSION;
+ }
+ 
++const char *
++nbd_unlocked_get_version_extra (struct nbd_handle *h)
++{
++  return LIBNBD_VERSION_EXTRA;
++}
++
+ int
+ nbd_unlocked_kill_subprocess (struct nbd_handle *h, int signum)
+ {
+diff --git a/tests/get-version.c b/tests/get-version.c
+index b8dc5338..c195e5f5 100644
+--- a/tests/get-version.c
++++ b/tests/get-version.c
+@@ -53,6 +53,13 @@ main (int argc, char *argv[])
+   }
+   assert (strcmp (s, PACKAGE_VERSION) == 0);
+ 
++  s = nbd_get_version_extra (nbd);
++  if (s == NULL) {
++    fprintf (stderr, "%s\n", nbd_get_error ());
++    exit (EXIT_FAILURE);
++  }
++  assert (strcmp (s, LIBNBD_VERSION_EXTRA) == 0);
++
+   nbd_close (nbd);
+   exit (EXIT_SUCCESS);
+ }
+-- 
+2.47.1
+

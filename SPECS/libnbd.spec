@@ -17,10 +17,10 @@
 %global verify_tarball_signature 1
 
 # The source directory.
-%global source_directory 1.20-stable
+%global source_directory 1.22-stable
 
 Name:           libnbd
-Version:        1.20.3
+Version:        1.22.2
 Release:        2%{?dist}
 Summary:        NBD client library in userspace
 
@@ -38,14 +38,25 @@ Source2:       libguestfs.keyring
 Source3:        copy-patches.sh
 
 # Patches are stored in the upstream repository:
-# https://gitlab.com/nbdkit/libnbd/-/commits/rhel-10.0/
+# https://gitlab.com/nbdkit/libnbd/-/commits/rhel-10.1/
 
 # Patches.
-Patch0001:     0001-generator-Print-full-error-in-handle_reply_error.patch
-Patch0002:     0002-lib-Don-t-overwrite-error-in-nbd_opt_-go-info.patch
-Patch0003:     0003-generator-Restore-assignment-to-local-err.patch
-Patch0004:     0004-generator-states-newstyle.c-Quote-untrusted-string-f.patch
-Patch0005:     0005-generator-states-newstyle.c-Don-t-sign-extend-escape.patch
+Patch0001:     0001-rust-Allow-cargo-build-target-RUST_TARGET-to-be-set.patch
+#Patch0002:     0002-ci-Disable-cross-builds-of-Rust.patch
+Patch0003:     0003-maint-Spelling-fixes.patch
+Patch0004:     0004-generator-Avoid-const-correctness-warnings-in-golang.patch
+Patch0005:     0005-info-Tolerate-nbdkit-slop-on-large-extents.patch
+Patch0006:     0006-todo-Remove-a-couple-of-minor-features-that-have-bee.patch
+Patch0007:     0007-ublk-Remove-unused-EXPECTED_VERSION.patch
+Patch0008:     0008-copy-Add-blkhash-option.patch
+Patch0009:     0009-copy-Fix-crash-when-blkhash-size-is-not-a-power-of-2.patch
+Patch0010:     0010-copy-Define-block_type-outside-of-block-struct.patch
+Patch0011:     0011-copy-Shrink-struct-block.patch
+Patch0012:     0012-copy-Enable-zero-optimization-for-allocated-extents.patch
+Patch0013:     0013-copy-Fix-corrupted-hash-on-incomplete-read.patch
+Patch0014:     0014-build-Add-.-configure-with-extra.patch
+Patch0015:     0015-lib-New-API-nbd_get_version_extra.patch
+Patch0016:     0016-tools-Add-extra-version-information-in-the-output-of.patch
 
 %if 0%{verify_tarball_signature}
 BuildRequires:  gnupg2
@@ -230,6 +241,7 @@ autoreconf -i
 %build
 %configure \
     --disable-static \
+    --with-extra='%{name}-%{version}-%{release}' \
     --with-tls-priority=@LIBNBD,SYSTEM \
     --with-bash-completions \
     PYTHON=%{__python3} \
@@ -386,6 +398,17 @@ make %{?_smp_mflags} check || {
 
 
 %changelog
+* Wed Jul 16 2025 Richard W.M. Jones <rjones@redhat.com> - 1.22.2-2
+- Rebase to libnbd 1.22.2
+- Synch spec file with Fedora Rawhide.
+  resolves: RHEL-78831
+- Fix nbdinfo with dark theme
+  resolves: RHEL-7119
+- Add nbdcopy --blkhash option
+  resolves: RHEL-85513
+- Log the version of libnbd / nbdcopy in virt-v2v output
+  resolves: RHEL-104019
+
 * Wed Oct 30 2024 Troy Dawson <tdawson@redhat.com> - 1.20.3-2
 - Bump release for October 2024 mass rebuild:
   Resolves: RHEL-64018

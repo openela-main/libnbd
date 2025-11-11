@@ -1,0 +1,51 @@
+From 1455311720b64b51a75fbc9f4da3e4a43551df53 Mon Sep 17 00:00:00 2001
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Date: Tue, 22 Apr 2025 17:30:02 +0100
+Subject: [PATCH] rust: Allow cargo build --target $RUST_TARGET to be set
+
+(cherry picked from commit 6bfae4e22aad0d21a326ea2418dbc0d59718e14e)
+---
+ configure.ac     | 2 ++
+ rust/Makefile.am | 6 ++++--
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 5feb6dbc..40d4f79f 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -751,6 +751,8 @@ AS_IF([test "x$enable_rust" != "xno"],[
+             CARGO=no
+         ])
+     ])
++    AC_ARG_VAR([RUST_TARGET],
++               [if set, cargo build uses --target $RUST_TARGET])
+ ],[CARGO=no])
+ AM_CONDITIONAL([HAVE_RUST],[test "x$CARGO" != "xno"])
+ 
+diff --git a/rust/Makefile.am b/rust/Makefile.am
+index a7700d69..29c29bd9 100644
+--- a/rust/Makefile.am
++++ b/rust/Makefile.am
+@@ -98,15 +98,17 @@ libnbd-sys/libnbd_version: Makefile
+ 	$(abs_top_builddir)/run echo $(VERSION) > libnbd-sys/libnbd_version.t
+ 	mv libnbd-sys/libnbd_version.t libnbd-sys/libnbd_version
+ 
++RUST_TARGET_PARAM := $(if $(RUST_TARGET),--target $(RUST_TARGET))
++
+ target/debug/liblibnbd.rlib: $(source_files)
+-	$(abs_top_builddir)/run $(CARGO) build
++	$(abs_top_builddir)/run $(CARGO) build $(RUST_TARGET_PARAM)
+ 
+ target/doc/libnbd/index.html: $(source_files)
+ 	$(abs_top_builddir)/run $(CARGO) doc
+ 
+ # This will actually build all the examples:
+ target/debug/examples/get-size: $(source_files)
+-	$(abs_top_builddir)/run $(CARGO) build --examples
++	$(abs_top_builddir)/run $(CARGO) build  $(RUST_TARGET_PARAM) --examples
+ 
+ if HAVE_POD
+ 
+-- 
+2.47.1
+
