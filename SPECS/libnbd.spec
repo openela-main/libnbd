@@ -21,7 +21,7 @@
 
 Name:           libnbd
 Version:        1.22.2
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        NBD client library in userspace
 
 License:        LGPL-2.0-or-later AND BSD-3-Clause
@@ -57,6 +57,8 @@ Patch0013:     0013-copy-Fix-corrupted-hash-on-incomplete-read.patch
 Patch0014:     0014-build-Add-.-configure-with-extra.patch
 Patch0015:     0015-lib-New-API-nbd_get_version_extra.patch
 Patch0016:     0016-tools-Add-extra-version-information-in-the-output-of.patch
+Patch0017:     0017-uri-Sanitize-user-provided-hostnames.patch
+Patch0018:     0018-lib-uri.c-Fix-indices-in-SSH-command-array.patch
 
 %if 0%{verify_tarball_signature}
 BuildRequires:  gnupg2
@@ -398,6 +400,10 @@ make %{?_smp_mflags} check || {
 
 
 %changelog
+* Tue Nov 18 2025 Richard W.M. Jones <rjones@redhat.com> - 1.22.2-3
+- Fix unsanitized hostnames in nbd+ssh URIs allow remote execution
+  resolves: RHEL-129311
+
 * Wed Jul 16 2025 Richard W.M. Jones <rjones@redhat.com> - 1.22.2-2
 - Rebase to libnbd 1.22.2
 - Synch spec file with Fedora Rawhide.

@@ -38,5 +38,5 @@ index e140b4fd..426b0384 100644
   - Configurable retries in response to read or write failures.
  
 -- 
-2.47.1
+2.47.3
 

@@ -264,5 +264,5 @@ index ef730ea2..5caba42c 100755
 +grep "$tool $EXPECTED_VERSION" $output
 +grep "libnbd $EXPECTED_VERSION" $output
 -- 
-2.47.1
+2.47.3
 

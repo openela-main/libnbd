@@ -314,5 +314,5 @@ index b9d9ce14..d6625095 100644
    assert (completion_cb_called == 0);
    assert (read_cb_freed == 0);
 -- 
-2.47.1
+2.47.3
 
