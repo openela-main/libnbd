@@ -17,11 +17,11 @@
 %global verify_tarball_signature 1
 
 # The source directory.
-%global source_directory 1.22-stable
+%global source_directory 1.24-stable
 
 Name:           libnbd
-Version:        1.22.2
-Release:        3%{?dist}
+Version:        1.24.1
+Release:        1%{?dist}
 Summary:        NBD client library in userspace
 
 License:        LGPL-2.0-or-later AND BSD-3-Clause
@@ -38,27 +38,10 @@ Source2:       libguestfs.keyring
 Source3:        copy-patches.sh
 
 # Patches are stored in the upstream repository:
-# https://gitlab.com/nbdkit/libnbd/-/commits/rhel-10.1/
+# https://gitlab.com/nbdkit/libnbd/-/commits/rhel-10.2/
 
 # Patches.
-Patch0001:     0001-rust-Allow-cargo-build-target-RUST_TARGET-to-be-set.patch
-#Patch0002:     0002-ci-Disable-cross-builds-of-Rust.patch
-Patch0003:     0003-maint-Spelling-fixes.patch
-Patch0004:     0004-generator-Avoid-const-correctness-warnings-in-golang.patch
-Patch0005:     0005-info-Tolerate-nbdkit-slop-on-large-extents.patch
-Patch0006:     0006-todo-Remove-a-couple-of-minor-features-that-have-bee.patch
-Patch0007:     0007-ublk-Remove-unused-EXPECTED_VERSION.patch
-Patch0008:     0008-copy-Add-blkhash-option.patch
-Patch0009:     0009-copy-Fix-crash-when-blkhash-size-is-not-a-power-of-2.patch
-Patch0010:     0010-copy-Define-block_type-outside-of-block-struct.patch
-Patch0011:     0011-copy-Shrink-struct-block.patch
-Patch0012:     0012-copy-Enable-zero-optimization-for-allocated-extents.patch
-Patch0013:     0013-copy-Fix-corrupted-hash-on-incomplete-read.patch
-Patch0014:     0014-build-Add-.-configure-with-extra.patch
-Patch0015:     0015-lib-New-API-nbd_get_version_extra.patch
-Patch0016:     0016-tools-Add-extra-version-information-in-the-output-of.patch
-Patch0017:     0017-uri-Sanitize-user-provided-hostnames.patch
-Patch0018:     0018-lib-uri.c-Fix-indices-in-SSH-command-array.patch
+#(nothing)
 
 %if 0%{verify_tarball_signature}
 BuildRequires:  gnupg2
@@ -98,6 +81,9 @@ BuildRequires:  glib2-devel
 
 # For bash-completion.
 BuildRequires:  bash-completion
+%if 0%{?fedora} || 0%{?rhel} >= 11
+BuildRequires:  bash-completion-devel
+%endif
 
 # Only for running the test suite.
 BuildRequires:  coreutils
@@ -371,8 +357,13 @@ make %{?_smp_mflags} check || {
 %{python3_sitearch}/nbd.py
 %{python3_sitearch}/nbdsh.py
 %{python3_sitearch}/__pycache__/nbd*.py*
+%{_bindir}/nbddiscard
 %{_bindir}/nbdsh
+%{_bindir}/nbdzero
+%{_mandir}/man1/nbddiscard.1*
 %{_mandir}/man1/nbdsh.1*
+%{_mandir}/man1/nbdzero.1*
+%{_mandir}/man3/libnbd-python.3*
 
 
 %files -n nbdfuse
@@ -388,8 +379,22 @@ make %{?_smp_mflags} check || {
 
 
 %files bash-completion
+%if 0%{?fedora} || 0%{?rhel} >= 11
+%dir %{bash_completions_dir}
+%{bash_completions_dir}/nbdcopy
+%{bash_completions_dir}/nbddiscard
+%{bash_completions_dir}/nbddump
+%{bash_completions_dir}/nbdfuse
+%{bash_completions_dir}/nbdinfo
+%{bash_completions_dir}/nbdsh
+%if 0%{?have_ublk}
+%{bash_completions_dir}/nbdublk
+%endif
+%{bash_completions_dir}/nbdzero
+%else
 %dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/nbdcopy
+%{_datadir}/bash-completion/completions/nbddiscard
 %{_datadir}/bash-completion/completions/nbddump
 %{_datadir}/bash-completion/completions/nbdfuse
 %{_datadir}/bash-completion/completions/nbdinfo
@@ -397,12 +402,19 @@ make %{?_smp_mflags} check || {
 %if 0%{?have_ublk}
 %{_datadir}/bash-completion/completions/nbdublk
 %endif
+%{_datadir}/bash-completion/completions/nbdzero
+%endif
 
 
 %changelog
-* Tue Nov 18 2025 Richard W.M. Jones <rjones@redhat.com> - 1.22.2-3
+* Tue Feb 17 2025 Richard W.M. Jones <rjones@redhat.com> - 1.24.1-1
+- Rebase to libnbd 1.24.1
+  resolves: RHEL-111243
+- Synch spec file with Fedora
 - Fix unsanitized hostnames in nbd+ssh URIs allow remote execution
-  resolves: RHEL-129311
+  resolves: RHEL-129296
+- Implement Post-Quantum Cryptography (PQC)
+  resolves: RHEL-101267
 
 * Wed Jul 16 2025 Richard W.M. Jones <rjones@redhat.com> - 1.22.2-2
 - Rebase to libnbd 1.22.2
